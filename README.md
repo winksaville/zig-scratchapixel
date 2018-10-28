@@ -13,5 +13,5 @@ git clone https://github.com/winksaville/zig-scratchapixel
 
 ## Test individual components
 ```
-zig test --test-filter "math3d" src/math3d.zig
+zig test src/vec3.zig
 ```
