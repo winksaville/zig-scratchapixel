@@ -35,3 +35,23 @@ test "vec3.init" {
     assert(vi32.y == 0);
     assert(vi32.z == 0);
 }
+
+test "vec3.copy" {
+    var v1 = Vec3(f32).init(1, 2, 3);
+    assert(v1.x == 1);
+    assert(v1.y == 2);
+    assert(v1.z == 3);
+
+    // Copy a vector
+    var v2 = v1;
+    assert(v2.x == 1);
+    assert(v2.y == 2);
+    assert(v2.z == 3);
+
+    // Copy via a pointer
+    var pV1 = &v1;
+    var v3 = pV1.*;
+    assert(v3.x == 1);
+    assert(v3.y == 2);
+    assert(v3.z == 3);
+}
