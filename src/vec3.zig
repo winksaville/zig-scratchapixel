@@ -1,5 +1,7 @@
 const std = @import("std");
+const math = std.math;
 const assert = std.debug.assert;
+const warn = std.debug.warn;
 
 pub fn Vec3(comptime T: type) type {
     return struct.{
@@ -15,6 +17,10 @@ pub fn Vec3(comptime T: type) type {
 
         pub fn init0() Self {
             return init(0, 0, 0);
+        }
+
+        pub fn length(pSelf: *const Self) T {
+            return math.sqrt((pSelf.x * pSelf.x) + (pSelf.y * pSelf.y) + (pSelf.z * pSelf.z));
         }
     };
 }
@@ -34,6 +40,12 @@ test "vec3.init" {
     assert(vi32.x == 0);
     assert(vi32.y == 0);
     assert(vi32.z == 0);
+
+    const v1 = Vec3(f64).init(1, 2, 3);
+    assert(v1.x == 1);
+    assert(v1.y == 2);
+    assert(v1.z == 3);
+
 }
 
 test "vec3.copy" {
@@ -54,4 +66,9 @@ test "vec3.copy" {
     assert(v3.x == 1);
     assert(v3.y == 2);
     assert(v3.z == 3);
+}
+
+test "vec3.length" {
+    const v1 = Vec3(f32).init(2, 3, 4);
+    assert(v1.length() == math.sqrt(29.0));
 }
