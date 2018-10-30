@@ -174,6 +174,37 @@ test "matrix.init" {
     }
 }
 
+// Example of implementing initUnit outside of Matrix
+// and validating at compile time the Matrix is square.
+// I'm not completely happy with this as M1x1 in this
+// example needed to be declared globally, so leaving
+// the internal initUnit for now.
+test "initUnit" {
+    var m1x1 = M1x1.init();
+    initUnit(&m1x1);
+    m1x1.print("1x1: initUnit\n");
+}
+
+// Define the Matrix globaly so unitFunc can know the type
+const M1x1 = Matrix(f32, 1, 1);
+
+// Initialize Matrix as a Unit matrix with 1's on the diagonal
+pub fn initUnit(pMat: var) void {
+    comptime const T = @typeOf(pMat.*);
+    comptime if (T.row_cnt != T.col_cnt) @compileError("initUnit can't be used on non-square Matrix's");
+    _ = T.visit(pMat, unitFunc, 0);
+}
+fn unitFunc(pMat: *M1x1, i: usize, j: usize, param: var) bool {
+    const T = @typeInfo(@typeInfo(meta.fieldInfo(@typeOf(pMat.*), "data").field_type).Array.child).Array.child;
+    pMat.data[i][j] = if (i == j) T(1) else T(0);
+    return true;
+}
+//test "initUnit.fails" {
+//    var m4x2 = Matrix(f32, 4, 2).init();
+//    initUnit(&m4x2);
+//    m4x2.print("4x2: initUnit\n");
+//}
+
 test "matrix.eql" {
     warn("\n");
     const m0 = Matrix(f32, 4, 4).initVal(0);
