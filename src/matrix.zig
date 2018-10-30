@@ -101,7 +101,7 @@ pub fn MatrixMultiplier(comptime m1: type, comptime m2: type) type {
     }
 
     if (m1.col_cnt != m2.row_cnt) {
-        @compileError("m1.col_cnt:" ++ m1.col_cnt ++ " != m2.row_cnt:" ++ m2.row_cnt);
+        @compileError("m1.col_cnt: m1.col_cnt != m2.row_cnt");
     }
     const DataType = m1_DataType;
     const row_cnt = m1.row_cnt;
