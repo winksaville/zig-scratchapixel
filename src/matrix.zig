@@ -4,6 +4,8 @@ const meta = std.meta;
 const assert = std.debug.assert;
 const warn = std.debug.warn;
 
+const DBG = false;
+
 pub fn Matrix(comptime T: type, comptime m: usize, comptime n: usize) type {
     return struct.{
         const Self = @This();
@@ -66,15 +68,20 @@ pub fn Matrix(comptime T: type, comptime m: usize, comptime n: usize) type {
             return pSelf;
         }
 
-        /// Print the Matrix
-        pub fn print(pSelf: *const Self, s: []const u8) void {
-            warn("{}", s);
-            for (pSelf.data) |row, i| {
-                warn("{}: []{}.{{ ", i, @typeName(T));
-                for (row) |val, j| {
-                    warn("{.7}{}", val, if (j < (row.len - 1)) ", " else " ");
+
+        /// Custom format routine for Mat4x4
+        pub fn format(self: *const Self,
+            comptime fmt: []const u8,
+            context: var,
+            comptime FmtError: type,
+            output: fn (@typeOf(context), []const u8) FmtError!void
+        ) FmtError!void {
+            for (self.data) |row, i| {
+                try std.fmt.format(context, FmtError, output, " []{}.{{ ", @typeName(T));
+                for (row) |col, j| {
+                    try std.fmt.format(context, FmtError, output, "{.7}{}", col, if (j < (row.len - 1)) ", " else " ");
                 }
-                warn("}},\n");
+                try std.fmt.format(context, FmtError, output, "}},\n");
             }
         }
 
@@ -137,9 +144,9 @@ pub fn MatrixMultiplier(comptime m1: type, comptime m2: type) type {
 
 
 test "matrix.init" {
-    warn("\n");
+    if (DBG) warn("\n");
     const mf32 = Matrix(f32, 4, 4).initVal(1);
-    mf32.print("mf32: init(1)\n");
+    if (DBG) warn("matrix.init: m4x4f32 init(1)\n{}", &mf32);
 
     for (mf32.data) |row| {
         for (row) |val| {
@@ -148,7 +155,7 @@ test "matrix.init" {
     }
 
     const mf64 = Matrix(f64, 4, 4).initUnit();
-    mf64.print("mf64: initUnit\n");
+    if (DBG) warn("matrix.init: mf64 initUnit\n{}", &mf64);
     for (mf64.data) |row, i| {
         for (row) |val, j| {
             if (i == j) {
@@ -162,7 +169,7 @@ test "matrix.init" {
     // Maybe initUnit shouldn't allow non-square values
     // See test "initUnit" for a possible solution
     const m2x4 = Matrix(f32, 2, 4).initUnit();
-    m2x4.print("2x4: initUnit\n");
+    if (DBG) warn("2x4: initUnit\n{}", &m2x4);
     for (m2x4.data) |row, i| {
         for (row) |val, j| {
             if (i == j) {
@@ -182,7 +189,7 @@ test "matrix.init" {
 test "initUnit" {
     var m1x1 = M1x1.init();
     initUnit(&m1x1);
-    m1x1.print("1x1: initUnit\n");
+    if (DBG) warn("matrix.initUnit: 1x1 initUnit\n{}", &m1x1);
 }
 
 // Define the Matrix globaly so unitFunc can know the type
@@ -202,11 +209,11 @@ fn unitFunc(pMat: *M1x1, i: usize, j: usize, param: var) bool {
 //test "initUnit.fails" {
 //    var m4x2 = Matrix(f32, 4, 2).init();
 //    initUnit(&m4x2);
-//    m4x2.print("4x2: initUnit\n");
+//    if (DBG) warn("matrix.initUnit.fails: 4x2 initUnit\n{}", m4x2);
 //}
 
 test "matrix.eql" {
-    warn("\n");
+    if (DBG) warn("\n");
     const m0 = Matrix(f32, 4, 4).initVal(0);
     for (m0.data) |row| {
         for (row) |val| {
@@ -218,32 +225,32 @@ test "matrix.eql" {
 
     // Modify last value and verify !eql
     o0.data[3][3] = 1;
-    o0.print("data.eql: o0\n");
+    if (DBG) warn("matrix.eql: o0\n{}", &o0);
     assert(!m0.eql(&o0));
 
     // Modify first value and verify !eql
     o0.data[0][0] = 1;
-    o0.print("data.eql: o0\n");
+    if (DBG) warn("matrix.eql: o0\n{}", &o0);
     assert(!m0.eql(&o0));
 
     // Restore back to 0 and verify eql
     o0.data[3][3] = 0;
     o0.data[0][0] = 0;
-    o0.print("data.eql: o0\n");
+    if (DBG) warn("matrix.eql: o0\n{}", &o0);
     assert(m0.eql(&o0));
 }
 
 test "matrix.1x1*1x1" {
-    warn("\n");
+    if (DBG) warn("\n");
 
     const m1 = Matrix(f32, 1, 1).initVal(2);
-    m1.print("matrix.1x1*1x1 m1:\n");
+    if (DBG) warn("matrix.1x1*1x1: m1\n{}", &m1);
 
     const m2 = Matrix(f32, 1, 1).initVal(3);
-    m2.print("matrix.1x1*1x1 m2:\n");
+    if (DBG) warn("matrix.1x1*1x1: m2\n{}", &m2);
 
     const m3 = MatrixMultiplier(@typeOf(m1), @typeOf(m2)).mul(&m1, &m2);
-    m3.print("matrix.1x1*1x1 m3:\n");
+    if (DBG) warn("matrix.1x1*1x1: m3\n{}", &m3);
 
     var expected = Matrix(f32, 1, 1).init();
     expected.data = [][1]f32.{
@@ -251,29 +258,29 @@ test "matrix.1x1*1x1" {
             (m1.data[0][0] * m2.data[0][0]),
         },
     };
-    expected.print("matrix.1x1*1x1 expected:\n");
+    if (DBG) warn("matrix.1x1*1x1: expected\n{}", &expected);
     assert(m3.eql(&expected));
 }
 
 test "matrix.2x2*2x2" {
-    warn("\n");
+    if (DBG) warn("\n");
 
     var m1 = Matrix(f32, 2, 2).init();
     m1.data = [][2]f32.{
         []f32.{ 1, 2 },
         []f32.{ 3, 4 },
     };
-    m1.print("matrix.2x2*2x2 m1:\n");
+    if (DBG) warn("matrix.2x2*2x2: m1\n{}", &m1);
 
     var m2 = Matrix(f32, 2, 2).init();
     m2.data = [][2]f32.{
         []f32.{ 5, 6 },
         []f32.{ 7, 8 },
     };
-    m2.print("matrix.2x2*2x2 m2:\n");
+    if (DBG) warn("matrix.2x2*2x2: m2\n{}", &m2);
 
     const m3 = MatrixMultiplier(@typeOf(m1), @typeOf(m2)).mul(&m1, &m2);
-    m3.print("matrix.2x2*2x2 m3:\n");
+    if (DBG) warn("matrix.2x2*2x2: m3\n{}", &m3);
 
     var expected = Matrix(f32, 2, 2).init();
     expected.data = [][2]f32.{
@@ -286,28 +293,28 @@ test "matrix.2x2*2x2" {
             (m1.data[1][0] * m2.data[0][1]) + (m1.data[1][1] * m2.data[1][1]),
         },
     };
-    expected.print("matrix.2x2*2x2 expected:\n");
+    if (DBG) warn("matrix.2x2*2x2: expected\n{}", &expected);
     assert(m3.eql(&expected));
 }
 
 test "matrix.1x2*2x1" {
-    warn("\n");
+    if (DBG) warn("\n");
 
     var m1 = Matrix(f32, 1, 2).init();
     m1.data = [][2]f32.{
         []f32.{ 3, 4 },
     };
-    m1.print("matrix.1x2*2x1 m1:\n");
+    if (DBG) warn("matrix.1x2*2x1: m1\n{}", &m1);
 
     var m2 = Matrix(f32, 2, 1).init();
     m2.data = [][1]f32.{
         []f32.{ 5 },
         []f32.{ 7 },
     };
-    m2.print("matrix.1x2*2x1 m2:\n");
+    if (DBG) warn("matrix.1x2*2x1: m2\n{}", &m2);
 
     const m3 = MatrixMultiplier(@typeOf(m1), @typeOf(m2)).mul(&m1, &m2);
-    m3.print("matrix.1x2*2x1 m3:\n");
+    if (DBG) warn("matrix.1x2*2x1: m3\n{}", &m3);
 
     var expected = Matrix(f32, 1, 1).init();
     expected.data = [][1]f32.{
@@ -315,6 +322,6 @@ test "matrix.1x2*2x1" {
             (m1.data[0][0] * m2.data[0][0]) + (m1.data[0][1] * m2.data[1][0]),
         },
     };
-    expected.print("matrix.1x2*2x1 expected:\n");
+    if (DBG) warn("matrix.1x2*2x1: expected\n{}", &expected);
     assert(m3.eql(&expected));
 }
