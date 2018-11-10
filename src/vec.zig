@@ -15,7 +15,7 @@ const ae = @import("../modules/zig-approxEql/approxeql.zig");
 const tc = @import("typeconversions.zig");
 const testExpected = @import("testexpected.zig").testExpected;
 
-const DBG = true;
+const DBG = false;
 
 pub fn Vec(comptime T: type, comptime size: usize) type {
     if (@typeId(T) != TypeId.Float) @compileError("Vec only support TypeId.Floats at this time");
