@@ -1,8 +1,14 @@
+const builtin = @import("builtin");
+const TypeId = builtin.TypeId;
+
 const std = @import("std");
 const math = std.math;
 const meta = std.meta;
 const assert = std.debug.assert;
 const warn = std.debug.warn;
+const bufPrint = std.fmt.bufPrint;
+
+const testExpected = @import("testexpected.zig").testExpected;
 
 const DBG = false;
 
@@ -14,8 +20,8 @@ pub fn Matrix(comptime T: type, comptime m: usize, comptime n: usize) type {
 
         pub data: [m][n]T,
 
-        /// Initialize Matrix to a value
-        pub fn init() Self {
+        /// Create an uninitialized Matrix
+        pub fn create() Self {
             return Self.{
                 .data = undefined,
             };
@@ -23,13 +29,13 @@ pub fn Matrix(comptime T: type, comptime m: usize, comptime n: usize) type {
 
         /// Initialize Matrix to a value
         pub fn initVal(val: T) Self {
-            var r = Self.init();
+            var r = Self.create();
             return r.visit(fillFunc, val).*;
         }
 
         /// Initialize Matrix as a Unit matrix with 1's on the diagonal
         pub fn initUnit() Self {
-            var r = Self.init();
+            var r = Self.create();
             return r.visit(unitFunc, 0).*;
         }
 
@@ -77,11 +83,22 @@ pub fn Matrix(comptime T: type, comptime m: usize, comptime n: usize) type {
             output: fn (@typeOf(context), []const u8) FmtError!void
         ) FmtError!void {
             for (self.data) |row, i| {
-                try std.fmt.format(context, FmtError, output, " []{}.{{ ", @typeName(T));
+                try std.fmt.format(context, FmtError, output, "[]{}.{{ ", @typeName(T));
                 for (row) |col, j| {
-                    try std.fmt.format(context, FmtError, output, "{.7}{}", col, if (j < (row.len - 1)) ", " else " ");
+                    switch (@typeId(T)) {
+                        TypeId.Float => try std.fmt.format(context, FmtError, output, "{.7}{}", col, if (j < (col_cnt - 1)) ", " else " "),
+                        TypeId.Int => try std.fmt.format(context, FmtError, output, "{}{}", col, if (j < (col_cnt - 1)) ", " else " "),
+                        else => @compileError("Only Float and Int types are supported"),
+                    }
                 }
-                try std.fmt.format(context, FmtError, output, "}},\n");
+                try std.fmt.format(context, FmtError, output, "}}");
+                if (row_cnt > 1) {
+                    if (i < (row_cnt - 1)) {
+                        try std.fmt.format(context, FmtError, output, ",\n");
+                    } else {
+                        try std.fmt.format(context, FmtError, output, ",");
+                    }
+                }
             }
         }
 
@@ -115,7 +132,7 @@ pub fn MatrixMultiplier(comptime m1: type, comptime m2: type) type {
     const col_cnt = m2.col_cnt;
     return struct.{
         pub fn mul(mt1: *const m1, mt2: *const m2) Matrix(DataType, row_cnt, col_cnt) {
-            var r = Matrix(DataType, row_cnt, col_cnt).init();
+            var r = Matrix(DataType, row_cnt, col_cnt).create();
             comptime var i: usize = 0;
             inline while (i < row_cnt) : (i += 1) {
                 //warn("mul {}:\n", i);
@@ -187,7 +204,7 @@ test "matrix.init" {
 // example needed to be declared globally, so leaving
 // the internal initUnit for now.
 test "initUnit" {
-    var m1x1 = M1x1.init();
+    var m1x1 = M1x1.create();
     initUnit(&m1x1);
     if (DBG) warn("matrix.initUnit: 1x1 initUnit\n{}", &m1x1);
 }
@@ -207,7 +224,7 @@ fn unitFunc(pMat: *M1x1, i: usize, j: usize, param: var) bool {
     return true;
 }
 //test "initUnit.fails" {
-//    var m4x2 = Matrix(f32, 4, 2).init();
+//    var m4x2 = Matrix(f32, 4, 2).create();
 //    initUnit(&m4x2);
 //    if (DBG) warn("matrix.initUnit.fails: 4x2 initUnit\n{}", m4x2);
 //}
@@ -252,7 +269,7 @@ test "matrix.1x1*1x1" {
     const m3 = MatrixMultiplier(@typeOf(m1), @typeOf(m2)).mul(&m1, &m2);
     if (DBG) warn("matrix.1x1*1x1: m3\n{}", &m3);
 
-    var expected = Matrix(f32, 1, 1).init();
+    var expected = Matrix(f32, 1, 1).create();
     expected.data = [][1]f32.{
         []f32.{
             (m1.data[0][0] * m2.data[0][0]),
@@ -265,14 +282,14 @@ test "matrix.1x1*1x1" {
 test "matrix.2x2*2x2" {
     if (DBG) warn("\n");
 
-    var m1 = Matrix(f32, 2, 2).init();
+    var m1 = Matrix(f32, 2, 2).create();
     m1.data = [][2]f32.{
         []f32.{ 1, 2 },
         []f32.{ 3, 4 },
     };
     if (DBG) warn("matrix.2x2*2x2: m1\n{}", &m1);
 
-    var m2 = Matrix(f32, 2, 2).init();
+    var m2 = Matrix(f32, 2, 2).create();
     m2.data = [][2]f32.{
         []f32.{ 5, 6 },
         []f32.{ 7, 8 },
@@ -282,7 +299,7 @@ test "matrix.2x2*2x2" {
     const m3 = MatrixMultiplier(@typeOf(m1), @typeOf(m2)).mul(&m1, &m2);
     if (DBG) warn("matrix.2x2*2x2: m3\n{}", &m3);
 
-    var expected = Matrix(f32, 2, 2).init();
+    var expected = Matrix(f32, 2, 2).create();
     expected.data = [][2]f32.{
         []f32.{
             (m1.data[0][0] * m2.data[0][0]) + (m1.data[0][1] * m2.data[1][0]),
@@ -300,13 +317,13 @@ test "matrix.2x2*2x2" {
 test "matrix.1x2*2x1" {
     if (DBG) warn("\n");
 
-    var m1 = Matrix(f32, 1, 2).init();
+    var m1 = Matrix(f32, 1, 2).create();
     m1.data = [][2]f32.{
         []f32.{ 3, 4 },
     };
     if (DBG) warn("matrix.1x2*2x1: m1\n{}", &m1);
 
-    var m2 = Matrix(f32, 2, 1).init();
+    var m2 = Matrix(f32, 2, 1).create();
     m2.data = [][1]f32.{
         []f32.{ 5 },
         []f32.{ 7 },
@@ -316,7 +333,7 @@ test "matrix.1x2*2x1" {
     const m3 = MatrixMultiplier(@typeOf(m1), @typeOf(m2)).mul(&m1, &m2);
     if (DBG) warn("matrix.1x2*2x1: m3\n{}", &m3);
 
-    var expected = Matrix(f32, 1, 1).init();
+    var expected = Matrix(f32, 1, 1).create();
     expected.data = [][1]f32.{
         []f32.{
             (m1.data[0][0] * m2.data[0][0]) + (m1.data[0][1] * m2.data[1][0]),
@@ -324,4 +341,72 @@ test "matrix.1x2*2x1" {
     };
     if (DBG) warn("matrix.1x2*2x1: expected\n{}", &expected);
     assert(m3.eql(&expected));
+}
+
+test "matrix.i32.1x2*2x1" {
+    if (DBG) warn("\n");
+
+    var m1 = Matrix(i32, 1, 2).create();
+    m1.data = [][2]i32.{
+        []i32.{ 3, 4 },
+    };
+    if (DBG) warn("matrix.i32.1x2*2x1: m1\n{}", &m1);
+
+    var m2 = Matrix(i32, 2, 1).create();
+    m2.data = [][1]i32.{
+        []i32.{ 5 },
+        []i32.{ 7 },
+    };
+    if (DBG) warn("matrix.i32.1x2*2x1: m2\n{}", &m2);
+
+    const m3 = MatrixMultiplier(@typeOf(m1), @typeOf(m2)).mul(&m1, &m2);
+    if (DBG) warn("matrix.i32.1x2*2x1: m3\n{}", &m3);
+
+    var expected = Matrix(i32, 1, 1).create();
+    expected.data = [][1]i32.{
+        []i32.{
+            (m1.data[0][0] * m2.data[0][0]) + (m1.data[0][1] * m2.data[1][0]),
+        },
+    };
+    if (DBG) warn("matrix.i32.1x2*2x1: expected\n{}", &expected);
+    assert(m3.eql(&expected));
+}
+
+test "matrix.format.f32" {
+    var buf: [256]u8 = undefined;
+
+    const v2 = Matrix(f32, 1, 2).initVal(2);
+    var result = try bufPrint(buf[0..], "v2={}", v2);
+    if (DBG) warn("\nmatrix.format: {}\n", result);
+    try testExpected("v2=[]f32.{ 2.0000000, 2.0000000 }", result);
+
+    const v3 = Matrix(f32, 3, 3).initVal(4);
+    result = try bufPrint(buf[0..], "v3\n{}", v3);
+    if (DBG) warn("matrix.format: {}\n", result);
+    try testExpected(
+        \\v3
+        \\[]f32.{ 4.0000000, 4.0000000, 4.0000000 },
+        \\[]f32.{ 4.0000000, 4.0000000, 4.0000000 },
+        \\[]f32.{ 4.0000000, 4.0000000, 4.0000000 },
+        , result);
+
+}
+
+test "matrix.format.i32" {
+    var buf: [100]u8 = undefined;
+
+    const v2 = Matrix(i32, 1, 2).initVal(2);
+    var result = try bufPrint(buf[0..], "v2={}", v2);
+    if (DBG) warn("\nmatrix.format: {}\n", result);
+    try testExpected("v2=[]i32.{ 2, 2 }", result);
+
+    const v3 = Matrix(i32, 3, 3).initVal(4);
+    result = try bufPrint(buf[0..], "v3\n{}", v3);
+    if (DBG) warn("matrix.format: {}\n", result);
+    try testExpected(
+        \\v3
+        \\[]i32.{ 4, 4, 4 },
+        \\[]i32.{ 4, 4, 4 },
+        \\[]i32.{ 4, 4, 4 },
+        , result);
 }
