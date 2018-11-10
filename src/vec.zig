@@ -7,12 +7,15 @@ const assert = std.debug.assert;
 const warn = std.debug.warn;
 const bufPrint = std.fmt.bufPrint;
 
-const Matrix = @import("matrix.zig").Matrix;
+const matrix = @import("matrix.zig");
+const Matrix = matrix.Matrix;
+const M44f32 = matrix.M44f32;
+const m44f32_unit = matrix.m44f32_unit;
 const ae = @import("../modules/zig-approxEql/approxeql.zig");
 const tc = @import("typeconversions.zig");
 const testExpected = @import("testexpected.zig").testExpected;
 
-const DBG = false;
+const DBG = true;
 
 pub fn Vec(comptime T: type, comptime size: usize) type {
     if (@typeId(T) != TypeId.Float) @compileError("Vec only support TypeId.Floats at this time");
@@ -51,10 +54,6 @@ pub fn Vec(comptime T: type, comptime size: usize) type {
                     pSelf.m.data[0][1] = v;
                 }
 
-                pub fn neg(pSelf: *const Self) Self {
-                    return Vec(T, size).init(-pSelf.x(), -pSelf.y());
-                }
-
                 pub fn eql(pSelf: *const Self, pOther: *const Self) bool {
                     return pSelf.x() == pOther.x() and pSelf.y() == pOther.y();
                 }
@@ -62,6 +61,10 @@ pub fn Vec(comptime T: type, comptime size: usize) type {
                 pub fn approxEql(pSelf: *const Self, pOther: *const Self, digits: usize) bool {
                     return ae.approxEql(pSelf.x(), pOther.x(), digits) and
                         ae.approxEql(pSelf.y(), pOther.y(), digits);
+                }
+
+                pub fn neg(pSelf: *const Self) Self {
+                    return Vec(T, size).init(-pSelf.x(), -pSelf.y());
                 }
 
                 pub fn add(pSelf: *const Self, pOther: *const Self) Self {
@@ -142,9 +145,6 @@ pub fn Vec(comptime T: type, comptime size: usize) type {
                 pub fn setZ(pSelf: *Self, v: T) void {
                     pSelf.m.data[0][2] = v;
                 }
-                pub fn neg(pSelf: *const Self) Self {
-                    return Vec(T, size).init(-pSelf.x(), -pSelf.y(), -pSelf.z());
-                }
 
                 pub fn eql(pSelf: *const Self, pOther: *const Self) bool {
                     return pSelf.x() == pOther.x() and
@@ -156,6 +156,10 @@ pub fn Vec(comptime T: type, comptime size: usize) type {
                     return ae.approxEql(pSelf.x(), pOther.x(), digits) and
                         ae.approxEql(pSelf.y(), pOther.y(), digits) and
                         ae.approxEql(pSelf.z(), pOther.z(), digits);
+                }
+
+                pub fn neg(pSelf: *const Self) Self {
+                    return Vec(T, size).init(-pSelf.x(), -pSelf.y(), -pSelf.z());
                 }
 
                 pub fn add(pSelf: *const Self, pOther: *const Self) Self {
@@ -236,11 +240,28 @@ pub fn Vec(comptime T: type, comptime size: usize) type {
                         (pSelf.x() * pOther.y()) - (pSelf.y() * pOther.x()),
                     );
                 }
+
+                pub fn transform(pSelf: *const Self, m: *const Matrix(T, 4, 4)) Self {
+                    var vx = pSelf.x();
+                    var vy = pSelf.y();
+                    var vz = pSelf.z();
+                    const rx = (vx * m.data[0][0]) + (vy * m.data[1][0]) + (vz * m.data[2][0]) + m.data[3][0];
+                    const ry = (vx * m.data[0][1]) + (vy * m.data[1][1]) + (vz * m.data[2][1]) + m.data[3][1];
+                    const rz = (vx * m.data[0][2]) + (vy * m.data[1][2]) + (vz * m.data[2][2]) + m.data[3][2];
+                    var rw   = (vx * m.data[0][3]) + (vy * m.data[1][3]) + (vz * m.data[2][3]) + m.data[3][3];
+
+                    if (rw != 1) {
+                        rw = 1.0 / rw;
+                    }
+                    return Self.init(rx * rw, ry * rw, rz * rw);
+                }
             };
         },
         else => @compileError("Only Vec size 2 and 3 supported"),
     }
 }
+
+pub const V3f32 = Vec(f32, 3);
 
 /// Custom format routine
 fn formatVec(
@@ -262,7 +283,7 @@ fn formatVec(
 }
 
 
-test "vec.init" {
+test "vec3.init" {
     const vf64 = Vec(f64, 3).initVal(0);
     assert(vf64.x() == 0);
     assert(vf64.y() == 0);
@@ -279,7 +300,7 @@ test "vec.init" {
     assert(v1.z() == 3);
 }
 
-test "vec.copy" {
+test "vec3.copy" {
     var v1 = Vec(f32, 3).init(1, 2, 3);
     assert(v1.x() == 1);
     assert(v1.y() == 2);
@@ -299,12 +320,97 @@ test "vec.copy" {
     assert(v3.z() == 3);
 }
 
-test "vec.length" {
+test "vec3.eql" {
+    const v1 = Vec(f32, 3).init(1.2345678, 2.3456789, 3.4567890);
+    const v2 = Vec(f32, 3).init(1.2345678, 2.3456789, 3.4567890);
+    assert(v1.eql(&v2));
+}
+
+test "vec3.approxEql" {
+    const v1 = Vec(f32, 3).init(1.2345678, 2.3456789, 3.4567890);
+    const v2 = Vec(f32, 3).init(1.2345600, 2.3456700, 3.4567800);
+    assert(v1.approxEql(&v2, 1));
+    assert(v1.approxEql(&v2, 2));
+    assert(v1.approxEql(&v2, 3));
+    assert(v1.approxEql(&v2, 4));
+    assert(v1.approxEql(&v2, 5));
+    assert(v1.approxEql(&v2, 6));
+    assert(!v1.approxEql(&v2, 7));
+    assert(!v1.approxEql(&v2, 8));
+}
+
+test "vec2.neg" {
+    const v1 = Vec(f32, 2).init(1, 2);
+    const v2 = Vec(f32, 2).init(-1, -2);
+    assert(v2.eql(&v1.neg()));
+}
+
+test "vec3.neg" {
+    const v1 = Vec(f32, 3).init(1, 2, 3);
+    const v2 = Vec(f32, 3).init(-1, -2, -3);
+    assert(v2.eql(&v1.neg()));
+}
+
+test "vec3.add" {
+    const v1 = Vec(f32, 3).init(3, 2, 1);
+    const v2 = Vec(f32, 3).init(1, 2, 3);
+    const v3 = v1.add(&v2);
+    assert(v3.x() == 4);
+    assert(v3.y() == 4);
+    assert(v3.z() == 4);
+}
+
+test "vec3.sub" {
+    const v1 = Vec(f32, 3).init(3, 2, 1);
+    const v2 = Vec(f32, 3).init(1, 2, 3);
+    const v3 = v1.sub(&v2);
+    assert(v3.x() == 2);
+    assert(v3.y() == 0);
+    assert(v3.z() == -2);
+}
+
+test "vec3.mul" {
+    const v1 = Vec(f32, 3).init(3, 2, 1);
+    const v2 = Vec(f32, 3).init(1, 2, 3);
+    const v3 = v1.mul(&v2);
+    assert(v3.x() == 3);
+    assert(v3.y() == 4);
+    assert(v3.z() == 3);
+}
+
+test "vec3.div" {
+    const v1 = Vec(f32, 3).init(3, 2, 1);
+    const v2 = Vec(f32, 3).init(1, 2, 3);
+    const v3 = v1.div(&v2);
+    assert(v3.x() == 3);
+    assert(v3.y() == 1);
+    assert(v3.z() == f32(1.0 / 3.0));
+}
+
+test "vec2.format" {
+    var buf: [100]u8 = undefined;
+
+    const v2 = Vec(f32, 2).init(2, 1);
+    var result = try bufPrint(buf[0..], "v2={}", v2);
+    if (DBG) warn("\nvec.format: {}\n", result);
+    try testExpected("v2=[]f32.{ 2.0000000, 1.0000000 }", result);
+}
+
+test "vec3.format" {
+    var buf: [100]u8 = undefined;
+
+    const v3 = Vec(f32, 3).init(3, 2, 1);
+    var result = try bufPrint(buf[0..], "v3={}", v3);
+    if (DBG) warn("vec3.format: {}\n", result);
+    try testExpected("v3=[]f32.{ 3.0000000, 2.0000000, 1.0000000 }", result);
+}
+
+test "vec3.length" {
     const v1 = Vec(f32, 3).init(2, 3, 4);
     assert(v1.length() == math.sqrt(29.0));
 }
 
-test "vec.dot" {
+test "vec3.dot" {
     const v1 = Vec(f32, 3).init(3, 2, 1);
     const v2 = Vec(f32, 3).init(1, 2, 3);
     assert(v1.dot(&v2) == (3 * 1) + (2 * 2) + (3 * 1));
@@ -313,7 +419,7 @@ test "vec.dot" {
     assert(math.sqrt(v2.dot(&v2)) == v2.length());
 }
 
-test "vec.normal" {
+test "vec3.normal" {
     var v0 = Vec(f32, 3).initVal(0);
     assert(v0.normal() == 0);
 
@@ -321,7 +427,7 @@ test "vec.normal" {
     assert(v0.normal() == 4 * 4 + 5 * 5 + 6 * 6);
 }
 
-test "vec.normalize" {
+test "vec3.normalize" {
     var v0 = Vec(f32, 3).initVal(0);
     var v1 = v0.normalize();
     assert(v1.x() == 0);
@@ -336,7 +442,7 @@ test "vec.normalize" {
     assert(v1.z() == 1.0 / len);
 }
 
-test "vec.cross.eql.neg" {
+test "vec3.cross" {
     var v1 = Vec(f32, 3).init(1, 0, 0); // Unit Vector X
     var v2 = Vec(f32, 3).init(0, 1, 0); // Unit Vector Y
 
@@ -361,65 +467,20 @@ test "vec.cross.eql.neg" {
     assert(v4.eql(&v3.neg()));
 }
 
-test "vec.approxEql" {
-    const v1 = Vec(f32, 3).init(1.2345678, 2.3456789, 3.4567890);
-    const v2 = Vec(f32, 3).init(1.2345600, 2.3456700, 3.4567800);
-    assert(v1.approxEql(&v2, 1));
-    assert(v1.approxEql(&v2, 2));
-    assert(v1.approxEql(&v2, 3));
-    assert(v1.approxEql(&v2, 4));
-    assert(v1.approxEql(&v2, 5));
-    assert(v1.approxEql(&v2, 6));
-    assert(!v1.approxEql(&v2, 7));
-    assert(!v1.approxEql(&v2, 8));
-}
+test "vec3.transform" {
+    if (DBG) warn("\n");
+    var v1 = V3f32.init(2, 3, 4);
+    var v2 = v1.transform(&m44f32_unit);
+    assert(v1.eql(&v2));
 
-test "vec.add" {
-    const v1 = Vec(f32, 3).init(3, 2, 1);
-    const v2 = Vec(f32, 3).init(1, 2, 3);
-    const v3 = v1.add(&v2);
-    assert(v3.x() == 4);
-    assert(v3.y() == 4);
-    assert(v3.z() == 4);
-}
+    var m1 = M44f32.initVal(0.2);
+    v1 = V3f32.init(0.5, 0.5, 0.5);
+    v2 = v1.transform(&m1);
+    if (DBG) warn("v1:\n{}\nm1:\n{}\nv2:\n{}\n", &v1, &m1, &v2);
+    assert(v2.eql(&V3f32.init(1, 1, 1)));
 
-test "vec.sub" {
-    const v1 = Vec(f32, 3).init(3, 2, 1);
-    const v2 = Vec(f32, 3).init(1, 2, 3);
-    const v3 = v1.sub(&v2);
-    assert(v3.x() == 2);
-    assert(v3.y() == 0);
-    assert(v3.z() == -2);
-}
-
-test "vec.mul" {
-    const v1 = Vec(f32, 3).init(3, 2, 1);
-    const v2 = Vec(f32, 3).init(1, 2, 3);
-    const v3 = v1.mul(&v2);
-    assert(v3.x() == 3);
-    assert(v3.y() == 4);
-    assert(v3.z() == 3);
-}
-
-test "vec.div" {
-    const v1 = Vec(f32, 3).init(3, 2, 1);
-    const v2 = Vec(f32, 3).init(1, 2, 3);
-    const v3 = v1.div(&v2);
-    assert(v3.x() == 3);
-    assert(v3.y() == 1);
-    assert(v3.z() == f32(1.0 / 3.0));
-}
-
-test "vec.format" {
-    var buf: [100]u8 = undefined;
-
-    const v2 = Vec(f32, 2).init(2, 1);
-    var result = try bufPrint(buf[0..], "v2={}", v2);
-    if (DBG) warn("\nvec.format: {}\n", result);
-    try testExpected("v2=[]f32.{ 2.0000000, 1.0000000 }", result);
-
-    const v3 = Vec(f32, 3).init(3, 2, 1);
-    result = try bufPrint(buf[0..], "v3={}", v3);
-    if (DBG) warn("vec.format: {}\n", result);
-    try testExpected("v3=[]f32.{ 3.0000000, 2.0000000, 1.0000000 }", result);
+    m1.data[3][3] = 1;
+    v2 = v1.transform(&m1);
+    if (DBG) warn("v1:\n{}\nm1:\n{}\nv2:\n{}\n", &v1, &m1, &v2);
+    assert(v2.approxEql(&V3f32.init(0.3846154, 0.3846154, 0.3846154), 6));
 }
