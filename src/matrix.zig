@@ -201,15 +201,17 @@ test "matrix.init" {
     }
 }
 
-// Example of implementing initUnit outside of Matrix
-// and validating at compile time the Matrix is square.
+// Example of using visit outside of Matrix
+// to create a unit matrix.
+//
 // I'm not completely happy with this as M1x1 in this
-// example needed to be declared globally, so leaving
-// the internal initUnit for now.
+// example needed to be declared globally.
 test "initUnit" {
     var m1x1 = M1x1.create();
     initUnit(&m1x1);
     if (DBG) warn("matrix.initUnit: 1x1 initUnit\n{}", &m1x1);
+    const t1x1 = M1x1.initUnit();
+    assert(m1x1.eql(&t1x1));
 }
 
 // Define the Matrix globaly so unitFunc can know the type
