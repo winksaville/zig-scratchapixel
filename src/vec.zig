@@ -97,13 +97,7 @@ pub fn Vec(comptime T: type, comptime size: usize) type {
                     comptime FmtError: type,
                     output: fn (@typeOf(context), []const u8) FmtError!void,
                 ) FmtError!void {
-                    for (self.m.data) |row, i| {
-                        try std.fmt.format(context, FmtError, output, "[]{}.{{ ", @typeName(T));
-                        for (row) |col, j| {
-                            try std.fmt.format(context, FmtError, output, "{.7}{} ", col, if (j < (row.len - 1)) "," else "");
-                        }
-                        try std.fmt.format(context, FmtError, output, "}}");
-                    }
+                    try formatVec(T, size, self, fmt, context, FmtError, output);
                 }
             };
         },
@@ -204,13 +198,7 @@ pub fn Vec(comptime T: type, comptime size: usize) type {
                     comptime FmtError: type,
                     output: fn (@typeOf(context), []const u8) FmtError!void,
                 ) FmtError!void {
-                    for (self.m.data) |row, i| {
-                        try std.fmt.format(context, FmtError, output, "[]{}.{{ ", @typeName(T));
-                        for (row) |col, j| {
-                            try std.fmt.format(context, FmtError, output, "{.7}{}", col, if (j < (row.len - 1)) ", " else " ");
-                        }
-                        try std.fmt.format(context, FmtError, output, "}}");
-                    }
+                    try formatVec(T, size, self, fmt, context, FmtError, output);
                 }
 
                 /// Returns the length as a f64, f32 or f16
@@ -250,14 +238,29 @@ pub fn Vec(comptime T: type, comptime size: usize) type {
                 }
             };
         },
-        else => @compileError("Vec size == 3 supported"),
+        else => @compileError("Only Vec size 2 and 3 supported"),
     }
 }
 
-pub fn main() u8 {
-    var v = Vec(f32, 2).init(1, 2);
-    return v.x() + v.y();
+/// Custom format routine
+fn formatVec(
+    comptime T: type,
+    comptime size: usize,
+    self: *const Vec(T, size),
+    comptime fmt: []const u8,
+    context: var,
+    comptime FmtError: type,
+    output: fn (@typeOf(context), []const u8) FmtError!void,
+) FmtError!void {
+    for (self.m.data) |row, i| {
+        try std.fmt.format(context, FmtError, output, "[]{}.{{ ", @typeName(T));
+        for (row) |col, j| {
+            try std.fmt.format(context, FmtError, output, "{.7}{}", col, if (j < (row.len - 1)) ", " else " ");
+        }
+        try std.fmt.format(context, FmtError, output, "}}");
+    }
 }
+
 
 test "vec.init" {
     const vf64 = Vec(f64, 3).initVal(0);
