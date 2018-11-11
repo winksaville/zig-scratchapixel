@@ -10,6 +10,8 @@ const bufPrint = std.fmt.bufPrint;
 
 const testExpected = @import("testexpected.zig").testExpected;
 
+const ae = @import("../modules/zig-approxEql/approxeql.zig");
+
 const DBG = false;
 
 pub fn Matrix(comptime T: type, comptime m: usize, comptime n: usize) type {
@@ -414,4 +416,64 @@ test "matrix.format.i32" {
         \\[]i32.{ 4, 4, 4 },
         \\[]i32.{ 4, 4, 4 },
         , result);
+}
+
+/// Return true of pSelf.data == pOther.data
+pub fn approxEql(pSelf: var, pOther: var, digits: usize) bool {
+    for (pSelf.data) |row, i| {
+        for (row) |val, j| {
+            if (!ae.approxEql(val, pOther.data[i][j], digits)) return false;
+        }
+    }
+    return true;
+}
+
+test "matrix.approxEql" {
+    if (DBG) warn("\n");
+    const m0 = Matrix(f32, 4, 4).initVal(1.234567);
+    const m1 = Matrix(f32, 4, 4).initVal(1.234578);
+    assert(approxEql(&m0, &m1, 1));
+    assert(approxEql(&m0, &m1, 2));
+    assert(approxEql(&m0, &m1, 3));
+    assert(approxEql(&m0, &m1, 4));
+    assert(approxEql(&m0, &m1, 5));
+    assert(!approxEql(&m0, &m1, 6));
+    assert(!approxEql(&m0, &m1, 7));
+    assert(!approxEql(&m0, &m1, 8));
+}
+
+/// Creates a perspective project matrix
+/// BasedOn: https://github.com/sharpdx/SharpDX/blob/755cb46d59f4bfb94386ff2df3fceccc511c216b/Source/SharpDX.Mathematics/Matrix.cs#L2328
+/// and: https://www.scratchapixel.com/code.php?id=4&origin=/lessons/3d-basic-rendering/perspective-and-orthographic-projection-matrix
+pub fn perspectiveM44(comptime T: type, fovDegrees: T, aspect: T, znear: T, zfar: T) Matrix(T, 4, 4) {
+    var scale: T = 1.0 / math.tan(T(fovDegrees * math.pi / 180.0) * 0.5);
+    var q = -zfar / (zfar - znear);
+
+    return Matrix(T, 4, 4).{ .data = [][4]T.{
+        []T.{ scale / aspect, 0, 0, 0 },
+        []T.{ 0, scale, 0, 0 },
+        []T.{ 0, 0, q, -1.0 },
+        []T.{ 0, 0, q * znear, 0 },
+    } };
+}
+
+test "matrix.perspectiveM44" {
+    const T = f32;
+    const M44 = Matrix(T, 4, 4);
+    const fov: T = 90;
+    const width: T = 512;
+    const height: T = 512;
+    const aspect: T = width / height;
+    const znear: T = 0.01;
+    const zfar: T = 1.0;
+    var perspective_matrix = perspectiveM44(T, fov, aspect, znear, zfar);
+
+    var expected: M44 = undefined;
+    expected.data = [][4]T.{
+        []T.{ 1, 0, 0, 0 },
+        []T.{ 0, 1, 0, 0 },
+        []T.{ 0, 0, -1.01010, -1 },
+        []T.{ 0, 0, -0.01010, 0 },
+    };
+    assert(approxEql(&perspective_matrix, &expected, 5));
 }
