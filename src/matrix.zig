@@ -11,6 +11,7 @@ const bufPrint = std.fmt.bufPrint;
 const testExpected = @import("testexpected.zig").testExpected;
 
 const ae = @import("../modules/zig-approxEql/approxeql.zig");
+const v = @import("vec.zig");
 
 const DBG = false;
 
@@ -461,12 +462,12 @@ test "matrix.perspectiveM44" {
     const T = f32;
     const M44 = Matrix(T, 4, 4);
     const fov: T = 90;
-    const width: T = 512;
-    const height: T = 512;
-    const aspect: T = width / height;
+    const widthf: T = 512;
+    const heightf: T = 512;
+    const aspect: T = widthf / heightf;
     const znear: T = 0.01;
     const zfar: T = 1.0;
-    var perspective_matrix = perspectiveM44(T, fov, aspect, znear, zfar);
+    var camera_to_perspective_matrix = perspectiveM44(T, fov, aspect, znear, zfar);
 
     var expected: M44 = undefined;
     expected.data = [][4]T.{
@@ -475,5 +476,5 @@ test "matrix.perspectiveM44" {
         []T.{ 0, 0, -1.01010, -1 },
         []T.{ 0, 0, -0.01010, 0 },
     };
-    assert(approxEql(&perspective_matrix, &expected, 5));
+    assert(approxEql(&camera_to_perspective_matrix, &expected, 5));
 }
