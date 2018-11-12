@@ -484,3 +484,70 @@ test "vec3.transform" {
     if (DBG) warn("v1:\n{}\nm1:\n{}\nv2:\n{}\n", &v1, &m1, &v2);
     assert(v2.approxEql(&V3f32.init(0.3846154, 0.3846154, 0.3846154), 6));
 }
+
+test "vec3.world_to_screen" {
+    if (DBG) warn("\n");
+    const T = f32;
+    const M44 = Matrix(T, 4, 4);
+    const fov: T = 90;
+    const widthf: T = 512;
+    const heightf: T = 512;
+    const width: u32 = @floatToInt(u32, 512);
+    const height: u32 = @floatToInt(u32, 512);
+    const aspect: T = widthf / heightf;
+    const znear: T = 0.01;
+    const zfar: T = 1.0;
+    var camera_to_perspective_matrix = matrix.perspectiveM44(T, fov, aspect, znear, zfar);
+
+    var world_to_camera_matrix = matrix.M44f32.initUnit();
+    world_to_camera_matrix.data[3][2] = -2;
+
+    var world_vertexs = []V3f32.{
+        V3f32.init(0, 1.0, 0),
+        V3f32.init(0, -1.0, 0),
+        V3f32.init(0, 1.0, 0.2),
+        V3f32.init(0, -1.0, -0.2),
+    };
+    var expected_camera_vertexs = []V3f32.{
+        V3f32.init(0, 1.0, -2),
+        V3f32.init(0, -1.0, -2),
+        V3f32.init(0, 1.0, -1.8),
+        V3f32.init(0, -1.0, -2.2),
+    };
+    var expected_projected_vertexs = []V3f32.{
+        V3f32.init(0, 0.5, 1.0050504),
+        V3f32.init(0, -0.5, 1.0050504),
+        V3f32.init(0, 0.5555555, 1.0044893),
+        V3f32.init(0, -0.4545454, 1.0055095),
+    };
+    var expected_screen_vertexs = [][2]u32.{
+        []u32.{256, 128},
+        []u32.{256, 384},
+        []u32.{256, 113},
+        []u32.{256, 372},
+    };
+    for (world_vertexs) |world_vert, i| {
+        if (DBG) warn("world_vert[{}]  = {}\n", i, &world_vert);
+
+        var camera_vert = world_vert.transform(&world_to_camera_matrix);
+        if (DBG) warn("camera_vert    = {}\n", camera_vert);
+        assert(camera_vert.approxEql(&expected_camera_vertexs[i], 6));
+
+        var projected_vert = camera_vert.transform(&camera_to_perspective_matrix);
+        if (DBG) warn("projected_vert = {}", projected_vert);
+        assert(projected_vert.approxEql(&expected_projected_vertexs[i], 6));
+
+        var xf = projected_vert.x();
+        var yf = projected_vert.y();
+        if (DBG) warn(" {.3}:{.3}", xf, yf);
+        if ((xf < -1) or (xf > 1) or (yf < -1) or (yf > 1)) {
+            if (DBG) warn(" clipped\n");
+        }
+
+        var x = @floatToInt(u32, math.min(widthf - 1, (xf + 1) * 0.5 * widthf));
+        var y = @floatToInt(u32, math.min(heightf - 1, (1 - (yf + 1) * 0.5) * heightf));
+        if (DBG) warn (" visible {}:{}\n", x, y);
+        assert(x == expected_screen_vertexs[i][0]);
+        assert(y == expected_screen_vertexs[i][1]);
+    }
+}
