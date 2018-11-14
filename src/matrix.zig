@@ -16,7 +16,7 @@ const v = @import("vec.zig");
 const DBG = false;
 
 pub fn Matrix(comptime T: type, comptime m: usize, comptime n: usize) type {
-    return struct.{
+    return struct {
         const Self = @This();
         const row_cnt = m;
         const col_cnt = n;
@@ -25,9 +25,7 @@ pub fn Matrix(comptime T: type, comptime m: usize, comptime n: usize) type {
 
         /// Create an uninitialized Matrix
         pub fn create() Self {
-            return Self.{
-                .data = undefined,
-            };
+            return Self{ .data = undefined };
         }
 
         /// Initialize Matrix to a value
@@ -77,13 +75,13 @@ pub fn Matrix(comptime T: type, comptime m: usize, comptime n: usize) type {
             return pSelf;
         }
 
-
         /// Custom format routine for Mat4x4
-        pub fn format(self: *const Self,
+        pub fn format(
+            self: *const Self,
             comptime fmt: []const u8,
             context: var,
             comptime FmtError: type,
-            output: fn (@typeOf(context), []const u8) FmtError!void
+            output: fn (@typeOf(context), []const u8) FmtError!void,
         ) FmtError!void {
             for (self.data) |row, i| {
                 try std.fmt.format(context, FmtError, output, "[]{}.{{ ", @typeName(T));
@@ -133,7 +131,7 @@ pub fn MatrixMultiplier(comptime m1: type, comptime m2: type) type {
     const DataType = m1_DataType;
     const row_cnt = m1.row_cnt;
     const col_cnt = m2.col_cnt;
-    return struct.{
+    return struct {
         pub fn mul(mt1: *const m1, mt2: *const m2) Matrix(DataType, row_cnt, col_cnt) {
             var r = Matrix(DataType, row_cnt, col_cnt).create();
             comptime var i: usize = 0;
@@ -278,11 +276,7 @@ test "matrix.1x1*1x1" {
     if (DBG) warn("matrix.1x1*1x1: m3\n{}", &m3);
 
     var expected = Matrix(f32, 1, 1).create();
-    expected.data = [][1]f32.{
-        []f32.{
-            (m1.data[0][0] * m2.data[0][0]),
-        },
-    };
+    expected.data = [][1]f32{[]f32{(m1.data[0][0] * m2.data[0][0])}};
     if (DBG) warn("matrix.1x1*1x1: expected\n{}", &expected);
     assert(m3.eql(&expected));
 }
@@ -291,16 +285,16 @@ test "matrix.2x2*2x2" {
     if (DBG) warn("\n");
 
     var m1 = Matrix(f32, 2, 2).create();
-    m1.data = [][2]f32.{
-        []f32.{ 1, 2 },
-        []f32.{ 3, 4 },
+    m1.data = [][2]f32{
+        []f32{ 1, 2 },
+        []f32{ 3, 4 },
     };
     if (DBG) warn("matrix.2x2*2x2: m1\n{}", &m1);
 
     var m2 = Matrix(f32, 2, 2).create();
-    m2.data = [][2]f32.{
-        []f32.{ 5, 6 },
-        []f32.{ 7, 8 },
+    m2.data = [][2]f32{
+        []f32{ 5, 6 },
+        []f32{ 7, 8 },
     };
     if (DBG) warn("matrix.2x2*2x2: m2\n{}", &m2);
 
@@ -308,12 +302,12 @@ test "matrix.2x2*2x2" {
     if (DBG) warn("matrix.2x2*2x2: m3\n{}", &m3);
 
     var expected = Matrix(f32, 2, 2).create();
-    expected.data = [][2]f32.{
-        []f32.{
+    expected.data = [][2]f32{
+        []f32{
             (m1.data[0][0] * m2.data[0][0]) + (m1.data[0][1] * m2.data[1][0]),
             (m1.data[0][0] * m2.data[0][1]) + (m1.data[0][1] * m2.data[1][1]),
         },
-        []f32.{
+        []f32{
             (m1.data[1][0] * m2.data[0][0]) + (m1.data[1][1] * m2.data[1][0]),
             (m1.data[1][0] * m2.data[0][1]) + (m1.data[1][1] * m2.data[1][1]),
         },
@@ -326,15 +320,13 @@ test "matrix.1x2*2x1" {
     if (DBG) warn("\n");
 
     var m1 = Matrix(f32, 1, 2).create();
-    m1.data = [][2]f32.{
-        []f32.{ 3, 4 },
-    };
+    m1.data = [][2]f32{[]f32{ 3, 4 }};
     if (DBG) warn("matrix.1x2*2x1: m1\n{}", &m1);
 
     var m2 = Matrix(f32, 2, 1).create();
-    m2.data = [][1]f32.{
-        []f32.{ 5 },
-        []f32.{ 7 },
+    m2.data = [][1]f32{
+        []f32{5},
+        []f32{7},
     };
     if (DBG) warn("matrix.1x2*2x1: m2\n{}", &m2);
 
@@ -342,11 +334,7 @@ test "matrix.1x2*2x1" {
     if (DBG) warn("matrix.1x2*2x1: m3\n{}", &m3);
 
     var expected = Matrix(f32, 1, 1).create();
-    expected.data = [][1]f32.{
-        []f32.{
-            (m1.data[0][0] * m2.data[0][0]) + (m1.data[0][1] * m2.data[1][0]),
-        },
-    };
+    expected.data = [][1]f32{[]f32{(m1.data[0][0] * m2.data[0][0]) + (m1.data[0][1] * m2.data[1][0])}};
     if (DBG) warn("matrix.1x2*2x1: expected\n{}", &expected);
     assert(m3.eql(&expected));
 }
@@ -355,15 +343,13 @@ test "matrix.i32.1x2*2x1" {
     if (DBG) warn("\n");
 
     var m1 = Matrix(i32, 1, 2).create();
-    m1.data = [][2]i32.{
-        []i32.{ 3, 4 },
-    };
+    m1.data = [][2]i32{[]i32{ 3, 4 }};
     if (DBG) warn("matrix.i32.1x2*2x1: m1\n{}", &m1);
 
     var m2 = Matrix(i32, 2, 1).create();
-    m2.data = [][1]i32.{
-        []i32.{ 5 },
-        []i32.{ 7 },
+    m2.data = [][1]i32{
+        []i32{5},
+        []i32{7},
     };
     if (DBG) warn("matrix.i32.1x2*2x1: m2\n{}", &m2);
 
@@ -371,11 +357,7 @@ test "matrix.i32.1x2*2x1" {
     if (DBG) warn("matrix.i32.1x2*2x1: m3\n{}", &m3);
 
     var expected = Matrix(i32, 1, 1).create();
-    expected.data = [][1]i32.{
-        []i32.{
-            (m1.data[0][0] * m2.data[0][0]) + (m1.data[0][1] * m2.data[1][0]),
-        },
-    };
+    expected.data = [][1]i32{[]i32{(m1.data[0][0] * m2.data[0][0]) + (m1.data[0][1] * m2.data[1][0])}};
     if (DBG) warn("matrix.i32.1x2*2x1: expected\n{}", &expected);
     assert(m3.eql(&expected));
 }
@@ -396,8 +378,7 @@ test "matrix.format.f32" {
         \\[]f32.{ 4.0000000, 4.0000000, 4.0000000 },
         \\[]f32.{ 4.0000000, 4.0000000, 4.0000000 },
         \\[]f32.{ 4.0000000, 4.0000000, 4.0000000 },
-        , result);
-
+    , result);
 }
 
 test "matrix.format.i32" {
@@ -416,7 +397,7 @@ test "matrix.format.i32" {
         \\[]i32.{ 4, 4, 4 },
         \\[]i32.{ 4, 4, 4 },
         \\[]i32.{ 4, 4, 4 },
-        , result);
+    , result);
 }
 
 /// Return true of pSelf.data == pOther.data
@@ -450,11 +431,11 @@ pub fn perspectiveM44(comptime T: type, fovDegrees: T, aspect: T, znear: T, zfar
     var scale: T = 1.0 / math.tan(T(fovDegrees * math.pi / 180.0) * 0.5);
     var q = -zfar / (zfar - znear);
 
-    return Matrix(T, 4, 4).{ .data = [][4]T.{
-        []T.{ scale / aspect, 0, 0, 0 },
-        []T.{ 0, scale, 0, 0 },
-        []T.{ 0, 0, q, -1.0 },
-        []T.{ 0, 0, q * znear, 0 },
+    return Matrix(T, 4, 4){ .data = [][4]T{
+        []T{ scale / aspect, 0, 0, 0 },
+        []T{ 0, scale, 0, 0 },
+        []T{ 0, 0, q, -1.0 },
+        []T{ 0, 0, q * znear, 0 },
     } };
 }
 
@@ -470,11 +451,11 @@ test "matrix.perspectiveM44" {
     var camera_to_perspective_matrix = perspectiveM44(T, fov, aspect, znear, zfar);
 
     var expected: M44 = undefined;
-    expected.data = [][4]T.{
-        []T.{ 1, 0, 0, 0 },
-        []T.{ 0, 1, 0, 0 },
-        []T.{ 0, 0, -1.01010, -1 },
-        []T.{ 0, 0, -0.01010, 0 },
+    expected.data = [][4]T{
+        []T{ 1, 0, 0, 0 },
+        []T{ 0, 1, 0, 0 },
+        []T{ 0, 0, -1.01010, -1 },
+        []T{ 0, 0, -0.01010, 0 },
     };
     assert(approxEql(&camera_to_perspective_matrix, &expected, 5));
 }

@@ -22,7 +22,7 @@ pub fn Vec(comptime T: type, comptime size: usize) type {
 
     switch (size) {
         2 => {
-            return struct.{
+            return struct {
                 const Self = @This();
 
                 pub m: Matrix(T, 1, size),
@@ -105,7 +105,7 @@ pub fn Vec(comptime T: type, comptime size: usize) type {
             };
         },
         3 => {
-            return struct.{
+            return struct {
                 const Self = @This();
 
                 pub m: Matrix(T, 1, size),
@@ -248,7 +248,7 @@ pub fn Vec(comptime T: type, comptime size: usize) type {
                     const rx = (vx * m.data[0][0]) + (vy * m.data[1][0]) + (vz * m.data[2][0]) + m.data[3][0];
                     const ry = (vx * m.data[0][1]) + (vy * m.data[1][1]) + (vz * m.data[2][1]) + m.data[3][1];
                     const rz = (vx * m.data[0][2]) + (vy * m.data[1][2]) + (vz * m.data[2][2]) + m.data[3][2];
-                    var rw   = (vx * m.data[0][3]) + (vy * m.data[1][3]) + (vz * m.data[2][3]) + m.data[3][3];
+                    var rw = (vx * m.data[0][3]) + (vy * m.data[1][3]) + (vz * m.data[2][3]) + m.data[3][3];
 
                     if (rw != 1) {
                         rw = 1.0 / rw;
@@ -281,7 +281,6 @@ fn formatVec(
         try std.fmt.format(context, FmtError, output, "}}");
     }
 }
-
 
 test "vec3.init" {
     const vf64 = Vec(f64, 3).initVal(0);
@@ -502,29 +501,29 @@ test "vec3.world_to_screen" {
     var world_to_camera_matrix = matrix.M44f32.initUnit();
     world_to_camera_matrix.data[3][2] = -2;
 
-    var world_vertexs = []V3f32.{
+    var world_vertexs = []V3f32{
         V3f32.init(0, 1.0, 0),
         V3f32.init(0, -1.0, 0),
         V3f32.init(0, 1.0, 0.2),
         V3f32.init(0, -1.0, -0.2),
     };
-    var expected_camera_vertexs = []V3f32.{
+    var expected_camera_vertexs = []V3f32{
         V3f32.init(0, 1.0, -2),
         V3f32.init(0, -1.0, -2),
         V3f32.init(0, 1.0, -1.8),
         V3f32.init(0, -1.0, -2.2),
     };
-    var expected_projected_vertexs = []V3f32.{
+    var expected_projected_vertexs = []V3f32{
         V3f32.init(0, 0.5, 1.0050504),
         V3f32.init(0, -0.5, 1.0050504),
         V3f32.init(0, 0.5555555, 1.0044893),
         V3f32.init(0, -0.4545454, 1.0055095),
     };
-    var expected_screen_vertexs = [][2]u32.{
-        []u32.{256, 128},
-        []u32.{256, 384},
-        []u32.{256, 113},
-        []u32.{256, 372},
+    var expected_screen_vertexs = [][2]u32{
+        []u32{ 256, 128 },
+        []u32{ 256, 384 },
+        []u32{ 256, 113 },
+        []u32{ 256, 372 },
     };
     for (world_vertexs) |world_vert, i| {
         if (DBG) warn("world_vert[{}]  = {}\n", i, &world_vert);
@@ -546,7 +545,7 @@ test "vec3.world_to_screen" {
 
         var x = @floatToInt(u32, math.min(widthf - 1, (xf + 1) * 0.5 * widthf));
         var y = @floatToInt(u32, math.min(heightf - 1, (1 - (yf + 1) * 0.5) * heightf));
-        if (DBG) warn (" visible {}:{}\n", x, y);
+        if (DBG) warn(" visible {}:{}\n", x, y);
         assert(x == expected_screen_vertexs[i][0]);
         assert(y == expected_screen_vertexs[i][1]);
     }

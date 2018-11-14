@@ -4,7 +4,7 @@ const assert = std.debug.assert;
 const warn = std.debug.warn;
 
 pub fn Vec3(comptime T: type) type {
-    return struct.{
+    return struct {
         const Self = @This();
 
         pub x: T,
@@ -12,7 +12,7 @@ pub fn Vec3(comptime T: type) type {
         pub z: T,
 
         pub fn init(x: T, y: T, z: T) Self {
-            return Self.{ .x = x, .y = y, .z = z };
+            return Self{ .x = x, .y = y, .z = z };
         }
 
         pub fn init0() Self {
