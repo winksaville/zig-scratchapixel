@@ -1,4 +1,4 @@
-# Scratch A Pixel
+# Scratch A Pixel (Deprecated, superceeded by zig-geomtry).
 
 Using Zig to implement code from [scratchapixel.com](https://www.scratchapixel.com) so I can learn more about Computer Graphics.
 
